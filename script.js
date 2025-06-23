@@ -1,82 +1,121 @@
-const speakButton = document.getElementById('speakButton');
-const resultContainer = document.getElementById('resultContainer');
-const errorContainer = document.getElementById('errorContainer');
-
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-if (SpeechRecognition) {
-    const recognition = new SpeechRecognition();
-    
-    // Use minimal configuration for better compatibility
-    recognition.lang = 'en-US';
-    recognition.continuous = false;
-    recognition.interimResults = false;
-
-    console.log('Speech Recognition API available');
-    console.log('Protocol:', location.protocol);
-    console.log('Hostname:', location.hostname);
-
-    recognition.onstart = () => {
-        console.log('Recognition started');
-        speakButton.classList.add('recording');
-        speakButton.textContent = 'Recording...';
-    };
-
-    recognition.onresult = (event) => {
-        console.log('Recognition result:', event.results);
-        const transcript = event.results[0][0].transcript;
-        resultContainer.textContent = `You said: ${transcript}`;
-    };
-
-    recognition.onerror = (event) => {
-        console.error('Recognition error:', event.error);
+class SpeechToText {
+    constructor() {
+        this.recognition = null;
+        this.isRecording = false;
+        this.speakButton = document.getElementById('speakButton');
+        this.result = document.getElementById('result');
+        this.transcription = document.getElementById('transcription');
+        this.status = document.getElementById('status');
         
-        // Try to restart recognition automatically for network errors
-        if (event.error === 'network') {
-            console.log('Attempting to restart recognition...');
-            setTimeout(() => {
-                try {
-                    recognition.start();
-                } catch (e) {
-                    console.error('Failed to restart:', e);
-                    errorContainer.textContent = 'Network error - please try again in a few moments.';
-                }
-            }, 1000);
+        this.init();
+    }
+
+    init() {
+        // Check if SpeechRecognition is supported
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            this.showError('Speech recognition is not supported in this browser. Please use Chrome.');
+            this.speakButton.disabled = true;
+            this.speakButton.style.opacity = '0.5';
             return;
         }
-        
-        let errorMessage = `Error occurred in recognition: ${event.error}`;
-        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-            errorMessage = 'Microphone access denied. Please allow microphone access in your browser settings and try again.';
-        } else if (event.error === 'no-speech') {
-            errorMessage = 'No speech was detected. Please try again.';
-        }
-        errorContainer.textContent = errorMessage;
-    };
 
-    recognition.onend = () => {
-        console.log('Recognition ended');
-        speakButton.classList.remove('recording');
-        speakButton.textContent = 'Start Speaking';
-    };
-
-    speakButton.addEventListener('click', () => {
-        console.log('Button clicked, starting recognition...');
-        resultContainer.textContent = '';
-        errorContainer.textContent = '';
+        // Initialize speech recognition
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        this.recognition = new SpeechRecognition();
         
-        // Add a small delay before starting recognition
-        setTimeout(() => {
-            try {
-                recognition.start();
-            } catch (e) {
-                console.error('Failed to start recognition:', e);
-                errorContainer.textContent = 'Failed to start recognition. Please try again.';
+        this.setupRecognition();
+        this.setupEventListeners();
+    }
+
+    setupRecognition() {
+        this.recognition.continuous = false;
+        this.recognition.interimResults = false;
+        this.recognition.lang = 'en-US';
+
+        this.recognition.onstart = () => {
+            this.isRecording = true;
+            this.updateUI();
+            this.showStatus('Listening... Speak now!', 'recording');
+        };
+
+        this.recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            this.transcription.textContent = transcript;
+            this.result.classList.remove('error');
+        };
+
+        this.recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            this.showError(`Error: ${event.error}`);
+            this.stopRecording();
+        };
+
+        this.recognition.onend = () => {
+            this.stopRecording();
+        };
+    }
+
+    setupEventListeners() {
+        this.speakButton.addEventListener('click', () => {
+            if (this.isRecording) {
+                this.stopRecording();
+            } else {
+                this.startRecording();
             }
-        }, 100);
-    });
+        });
+    }
 
-} else {
-    speakButton.disabled = true;
-    errorContainer.textContent = 'Speech recognition not supported in this browser.';
-} 
+    startRecording() {
+        try {
+            this.recognition.start();
+        } catch (error) {
+            console.error('Error starting speech recognition:', error);
+            this.showError('Failed to start speech recognition');
+        }
+    }
+
+    stopRecording() {
+        this.isRecording = false;
+        this.updateUI();
+        this.hideStatus();
+        
+        if (this.recognition) {
+            try {
+                this.recognition.stop();
+            } catch (error) {
+                console.error('Error stopping speech recognition:', error);
+            }
+        }
+    }
+
+    updateUI() {
+        if (this.isRecording) {
+            this.speakButton.classList.add('recording');
+            this.speakButton.innerHTML = '<span class="mic-icon">🔴</span>Stop Recording';
+        } else {
+            this.speakButton.classList.remove('recording');
+            this.speakButton.innerHTML = '<span class="mic-icon">🎤</span>Start Speaking';
+        }
+    }
+
+    showStatus(message, type = '') {
+        this.status.textContent = message;
+        this.status.className = `status ${type}`;
+        this.status.style.display = 'block';
+    }
+
+    hideStatus() {
+        this.status.style.display = 'none';
+    }
+
+    showError(message) {
+        this.result.classList.add('error');
+        this.transcription.textContent = message;
+        this.showStatus(message, 'error');
+    }
+}
+
+// Initialize the app when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    new SpeechToText();
+}); 

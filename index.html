@@ -3,14 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Speech to Text</title>
+    <title>Speech to Text Converter</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Speech to Text</h1>
-    <button id="speakButton">Start Speaking</button>
-    <div id="resultContainer"></div>
-    <div id="errorContainer"></div>
+    <div class="container">
+        <h1>🎤 Speech to Text</h1>
+        
+        <button id="speakButton" class="speak-button">
+            <span class="mic-icon">🎤</span>
+            Start Speaking
+        </button>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        
+        <div id="result" class="result">
+            <h3>Transcription</h3>
+            <p id="transcription">Click the button above and start speaking...</p>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
